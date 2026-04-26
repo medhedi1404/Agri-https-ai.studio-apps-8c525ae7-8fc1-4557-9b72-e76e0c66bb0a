@@ -1,0 +1,72 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Information about the farmer",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "region": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "email"]
+    },
+    "Scan": {
+      "title": "Diagnostic Scan",
+      "description": "Result of an AI scan on a plant",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "diseaseName": { "type": "string" },
+        "confidence": { "type": "number" },
+        "treatment": { "type": "string" },
+        "location": {
+          "type": "object",
+          "properties": {
+            "lat": { "type": "number" },
+            "lng": { "type": "number" }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "diseaseName", "confidence", "createdAt"]
+    },
+    "CommunityAlert": {
+      "title": "Community Alert",
+      "description": "Aggregated disease risk data for the map",
+      "type": "object",
+      "properties": {
+        "diseaseName": { "type": "string" },
+        "location": {
+          "type": "object",
+          "properties": {
+            "lat": { "type": "number" },
+            "lng": { "type": "number" }
+          }
+        },
+        "intensity": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "userId": { "type": "string" }
+      },
+      "required": ["diseaseName", "location", "intensity", "updatedAt", "userId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Store user profiles"
+    },
+    "/scans/{scanId}": {
+      "schema": "Scan",
+      "description": "Store individual AI diagnostic scans"
+    },
+    "/communityAlerts/{alertId}": {
+      "schema": "CommunityAlert",
+      "description": "Anonymized diagnostic data for community map"
+    }
+  }
+}

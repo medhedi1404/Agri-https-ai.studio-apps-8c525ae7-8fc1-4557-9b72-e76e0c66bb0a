@@ -1,0 +1,73 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global safety net: Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Phase 3: Primitive Definitions
+    function isSignedIn() { return request.auth != null; }
+    function isValidId(id) { return id is string && id.size() >= 10 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+
+    // Validation Helpers
+    function isValidUser(data) {
+      return data.keys().hasAll(['userId', 'name', 'email', 'createdAt']) &&
+             data.keys().size() >= 4 &&
+             data.userId == request.auth.uid &&
+             data.name is string && data.name.size() <= 100 &&
+             data.email is string && data.email.size() <= 100 &&
+             (data.createdAt == request.time || data.createdAt is timestamp);
+    }
+
+    function isValidScan(data) {
+      return data.keys().hasAll(['userId', 'diseaseName', 'confidence', 'createdAt', 'treatment', 'details', 'riskLevel', 'imageUrl']) &&
+             data.userId == request.auth.uid &&
+             data.diseaseName is string && data.diseaseName.size() <= 200 &&
+             data.confidence is number && data.confidence >= 0 && data.confidence <= 1 &&
+             data.treatment is string && data.treatment.size() <= 1000 &&
+             data.details is string && data.details.size() <= 2000 &&
+             data.riskLevel in ['Low', 'Medium', 'High'] &&
+             (data.createdAt == request.time || data.createdAt is timestamp) &&
+             data.imageUrl is string && data.imageUrl.size() <= 2048;
+    }
+
+    function isValidAlert(data) {
+      return data.keys().hasAll(['diseaseName', 'location', 'intensity', 'updatedAt', 'userId']) &&
+             data.userId == request.auth.uid &&
+             data.diseaseName is string && data.diseaseName.size() <= 200 &&
+             data.intensity is number && data.intensity >= 0 && data.intensity <= 10 &&
+             (data.updatedAt == request.time || data.updatedAt is timestamp) &&
+             data.location.lat is number && data.location.lat >= -90 && data.location.lat <= 90 &&
+             data.location.lng is number && data.location.lng >= -180 && data.location.lng <= 180;
+    }
+
+    // 1. Users Collection
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidUser(incoming()) && 
+                    incoming().diff(existing()).affectedKeys().hasOnly(['name', 'region']);
+      allow delete: if false;
+    }
+
+    // 2. Scans Collection
+    match /scans/{scanId} {
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get: if isOwner(resource.data.userId);
+      allow create: if isSignedIn() && isValidScan(incoming()) && isValidId(scanId);
+      allow update, delete: if false; // Scans are immutable for farmers
+    }
+
+    // 3. Community Alerts
+    match /communityAlerts/{alertId} {
+      allow list: if isSignedIn();
+      allow get: if isSignedIn();
+      allow create: if isSignedIn() && isValidAlert(incoming()) && isValidId(alertId);
+      allow update, delete: if false; // Alerts are currently immutable or managed by system
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "Remix: Agri-Vision Diagnostics",
+  "description": "IA de diagnostic agricole pour la détection précoce des maladies et carences des cultures, avec carte collaborative des foyers infectieux.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "Vision AI",
+    "Geospatial mapping",
+    "Real-time collaboration"
+  ]
+}
